@@ -1,0 +1,92 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# Loading the dataset
+df = pd.read_csv('pima-indians-diabetes.csv')
+
+# Separating the features and the target variables
+x = df.drop('HasDiabetes', axis = 1).values
+y = df['HasDiabetes'].values
+
+# Splitting dataset into train and test sets
+x_train, x_test = x[:500], x[500:]
+y_train, y_test = y[:500], y[500:]
+
+# Min-max Normalization
+x_min = x_train.min(axis = 0)
+x_max = x_train.max(axis = 0)
+x_train = (x_train - x_min) / (x_max - x_min)
+x_test = (x_test - x_min) / (x_max - x_min)
+
+def sgd_update_linear(w, bias, x, y, learning_rate):
+    # Linear regression
+    y_pred = np.dot(x, w) + bias
+    
+    # Update w and bias
+    error = y_pred - y
+    w -= learning_rate * error * x
+    bias -= learning_rate * error
+    
+    return w, bias
+
+def sgd_update_logistic(w, bias, x, y, learning_rate):
+    # Logisitic regression
+    y_pred = 1 / (1 + np.exp(-np.dot(x, w) - bias))
+    
+    # Update w and bias
+    error = y_pred - y
+    w -= learning_rate * error * x
+    bias -= learning_rate * error
+    
+    return w, bias
+
+""" I think this is MSE and needs to be SSE """
+def calculate_loss(y, y_pred):
+    return np.mean((y - y_pred) ** 2)
+
+def predict(w, bias, x):
+    return 1 / (1 + np.exp(-np.dot(x, w) - bias)) > 0.5
+
+
+def train_sgd(x, y, learning_rate, epochs, model_type = 'linear'):
+    w = np.zeros(x.shape[1])
+    bias = 0 
+    losses = []
+    
+    for epoch in range(epochs):
+        for i in range(len(x)):
+            if model_type == 'linear':
+                w, bias = sgd_update_linear(w, bias, x[i], y[i], learning_rate)
+            elif model_type == 'logistic':
+                w, bias = sgd_update_logistic(w, bias, x[i], y[i], learning_rate)
+                
+            if (i + 1) % 100 == 0:
+                y_pred = predict(w, bias, x) if model_type == 'logistic' else np.dot(x, w) + bias
+                loss = calculate_loss(y, y_pred)
+                losses.append(loss)
+                
+                # Print the loss every 100 iterations
+                print(f'Epoch: {epoch + 1}, Step {i + 1}, Loss: {loss}')
+                
+    return w, bias, losses
+
+
+learning_rate = [0.8, 0.001, 0.00001]
+epochs = 1
+
+# Train Linear Regression Model
+w_linear, bias_linear, losses_linear = train_sgd(x_train, y_train, learning_rate[0], epochs, 'linear')
+
+# Train Logistic Regression Model
+w_logistic, bias_logistic, losses_logistic = train_sgd(x_train, y_train, learning_rate[1], epochs, 'logistic')
+
+# Plot the Losses
+plt.plot(losses_linear, label = 'Linear Regression')
+plt.plot(losses_logistic, label = 'Logistic Regression')
+plt.xlabel('Steps')
+plt.ylabel('Loss')
+plt.legend()
+plt.savefig('losses.png')
+
+                
