@@ -13,10 +13,7 @@ y = df['HasDiabetes'].values
 x_train, x_test = x[:500], x[500:]
 y_train, y_test = y[:500], y[500:]
 
-x_train = np.hstack((np.ones((x_train.shape[0], 1)), x_train))
-x_test = np.hstack((np.ones((x_test.shape[0], 1)), x_test))
-
-print(x_train[:5])
+#print(x_train[:5])
 
 # Min-max Normalization
 x_min = x_train.min(axis = 0)
@@ -47,17 +44,21 @@ def sgd_update_logistic(w, bias, x, y, learning_rate):
     return w, bias
 
 # I think this is MSE and needs to be SSE 
-def calculate_loss(y, y_pred):
-    return np.mean((y - y_pred) ** 2)
+def sse_loss(y, y_pred):
+    return ((y - y_pred) ** 2)
 
-def predict(w, bias, x):
+def logistic_predict(w, bias, x):
     return 1 / (1 + np.exp(-np.dot(x, w) - bias)) > 0.5
 
+def linear_predict(w, bias, x):
+    return np.dot(x, w) + bias
 
-def train_sgd(x, y, learning_rate, epochs, model_type = 'linear'):
+
+def train_sgd(x, y, learning_rate, epochs, model_type):
     w = np.zeros(x.shape[1])
     bias = 0 
-    losses = []
+    loss = 0
+    avg_losses = []
     
     for epoch in range(epochs):
         for i in range(len(x)):
@@ -66,32 +67,58 @@ def train_sgd(x, y, learning_rate, epochs, model_type = 'linear'):
             elif model_type == 'logistic':
                 w, bias = sgd_update_logistic(w, bias, x[i], y[i], learning_rate)
                 
+            y_pred = logistic_predict(w, bias, x[i]) if model_type == 'logistic' else linear_predict(w, bias, x[i])
+            loss += sse_loss(y[i], y_pred)
+            avg_loss = loss / (i + 1)
+             
             if (i + 1) % 100 == 0:
-                y_pred = predict(w, bias, x) if model_type == 'logistic' else np.dot(x, w) + bias
-                loss = calculate_loss(y, y_pred)
-                losses.append(loss)
+                avg_losses.append(avg_loss)
                 
                 # Print the loss every 100 iterations
-                print(f'Epoch: {epoch + 1}, Step {i + 1}, Loss: {loss}')
-                
-    return w, bias, losses
+                print(f'Model: {model_type}, Learning Rate: {learning_rate}, Step {i + 1}, Loss: {avg_loss}')
+    
+    l2_norm = np.linalg.norm(w, ord = 2)
+    print(f'L2 Norm of weights: {l2_norm}\n')
+    return w, bias, avg_losses
+
+
+# Run Tests
+def test_model(w, bias, x, y, model_type):
+    loss = 0
+    avg_losses = []
+    
+    for i in range(len(x)):
+        y_pred = logistic_predict(w, bias, x[i]) if model_type == 'logistic' else linear_predict(w, bias, x[i])
+        loss += sse_loss(y[i], y_pred)
+        avg_loss = loss / (i + 1)
+        
+        if (i + 1) % 100 == 0:
+            avg_losses.append(avg_loss)
+            print(f'\nModel: {model_type}, Step: {i + 1}, Average Loss: {avg_loss}, SSE: {loss}')
+        elif (i + 1) == 268:
+            print(f'\nModel: {model_type}, Step: {i + 1}, Average Loss: {avg_loss}, SSE: {loss}')
 
 
 learning_rate = [0.8, 0.001, 0.00001]
 epochs = 1
 
-# Train Linear Regression Model
-w_linear, bias_linear, losses_linear = train_sgd(x_train, y_train, learning_rate[0], epochs, 'linear')
+for i in learning_rate:
+    # Train Linear Regression Model
+    w_linear, bias_linear, losses_linear = train_sgd(x_train, y_train, i, epochs, 'linear')
 
-# Train Logistic Regression Model
-w_logistic, bias_logistic, losses_logistic = train_sgd(x_train, y_train, learning_rate[1], epochs, 'logistic')
+    # Train Logistic Regression Model
+    w_logistic, bias_logistic, losses_logistic = train_sgd(x_train, y_train, i, epochs, 'logistic')
 
-# Plot the Losses
-plt.plot(losses_linear, label = 'Linear Regression')
-plt.plot(losses_logistic, label = 'Logistic Regression')
-plt.xlabel('Steps')
-plt.ylabel('Loss')
-plt.legend()
-plt.savefig('losses.png')
+    # Plot the Losses
+    plt.plot(losses_linear, label = 'Linear Regression')
+    plt.plot(losses_logistic, label = 'Logistic Regression')
+    plt.xlabel('Steps')
+    plt.ylabel('Average Loss')
+    plt.title(f'Average Losses when Learning Rate = {i}')
+    plt.legend()
+    plt.savefig(f'losses_learning_rate_{i}.png')
 
-                
+
+# Test the models
+test_model(w_linear, bias_linear, x_test, y_test, 'linear')
+test_model(w_logistic, bias_logistic, x_test, y_test, 'logistic')
