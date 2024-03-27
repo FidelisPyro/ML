@@ -13,6 +13,11 @@ y = df['HasDiabetes'].values
 x_train, x_test = x[:500], x[500:]
 y_train, y_test = y[:500], y[500:]
 
+x_train = np.hstack((np.ones((x_train.shape[0], 1)), x_train))
+x_test = np.hstack((np.ones((x_test.shape[0], 1)), x_test))
+
+print(x_train[:5])
+
 # Min-max Normalization
 x_min = x_train.min(axis = 0)
 x_max = x_train.max(axis = 0)
@@ -41,7 +46,7 @@ def sgd_update_logistic(w, bias, x, y, learning_rate):
     
     return w, bias
 
-""" I think this is MSE and needs to be SSE """
+# I think this is MSE and needs to be SSE 
 def calculate_loss(y, y_pred):
     return np.mean((y - y_pred) ** 2)
 
